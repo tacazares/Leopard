@@ -108,3 +108,32 @@ python calculate_avg_bigwig.py -i liver.bigwig Ag04449.bigwig -o avg_new.bigwig 
 
 
 
+## Preparing inputs for Leopard
+
+Currently, GM12878 samples have been mapped to hg19 and de-duplicated. I wanted to get as close to the Leopard as possible, which looks like it has been binned in 35 bp intervals. 
+
+![Leopard signal tracks](figure/Leopard_signal_track_comparison.png)
+
+I converted the filtered alignments to a coverage track using:
+
+```bash
+bamCoverage -b SRX2717912_final.bam -o SRX2717912_final.bw -bs 20 -bl /data/miraldiLab/databank/genome_inf/hg19/hg19_maxatac_blacklist.bed -p 12 --minMappingQuality 30
+
+bamCoverage -b SRX2717911_final.bam -o SRX2717911_final.bw -bs 20 -bl /data/miraldiLab/databank/genome_inf/hg19/hg19_maxatac_blacklist.bed -p 12 --minMappingQuality 30
+```
+
+I then had to build the subsamples for quantile normalization.
+
+```bash
+cd /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/leopard_inputs
+
+python subsample_for_qn.py -i /data/miraldiNB/Tareian/scratch/20221012_leopard_gm12878/bin/Leopard/data/liver.bigwig -o sample_liver.npy -rg grch37
+
+
+python subsample_for_qn.py -i /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/SRX2717911/SRX2717911_final.bw /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/SRX2717912/SRX2717912_final.bw \
+-o GM12878.npy \
+-rg grch37
+
+python /data/miraldiNB/Tareian/scratch/20221012_leopard_gm12878/bin/Leopard/data/quantile_normalize_bigwig.py -r /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/leopard_inputs/output/sample_liver.npy -s /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/leopard_inputs/output/GM12878.npy -i /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/SRX2717911/SRX2717911_final.bw /data/miraldiNB/Tareian/scratch/20221019_GM12878_hg19/SRX2717912/SRX2717912_final.bw -o GM12878_quantNorm.bw -rg grch37
+
+```

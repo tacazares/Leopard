@@ -3,9 +3,9 @@ import sys
 import numpy as np
 from keras.models import Model
 from keras.layers import Input, concatenate, Conv1D, MaxPooling1D, Conv2DTranspose,Lambda,BatchNormalization
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
-from keras import backend as K
+from tensorflow.keras import backend as K
 
 K.set_image_data_format('channels_last')  # TF dimension ordering in this code
 

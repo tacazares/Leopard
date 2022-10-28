@@ -1,16 +1,18 @@
-#!/home/hyangl/anaconda3/bin/python
 import pyBigWig
 import argparse
 import os
+import pandas as pd
 import sys
 import numpy as np
 import tensorflow as tf
+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR) ## disable tf warning!
+
 stderr = sys.stderr # disable printing "Using TensorFlow backend."
 sys.stderr = open(os.devnull, 'w')
 import keras
 sys.stderr = stderr
-from keras import backend as K
+from tensorflow.keras import backend as K
 import unet
 from util.auc import score_record, calculate_auc
 
@@ -35,37 +37,64 @@ for i in np.arange(len(chr_all)):
 path_computer='../data/'
 path1=path_computer
 path2=path_computer
-#path1=path_computer + 'dna_bigwig/' # dna
-#path2=path_computer + 'dnase_bigwig/' # dnase
 
 # argv
 def get_args():
     parser = argparse.ArgumentParser(description="train")
-    parser.add_argument('-m', '--model', default='weights_1.h5', type=str,
-        help='model name')
-    parser.add_argument('-tf', '--transcription_factor', default='CTCF', type=str,
-        help='transcript factor')
-    parser.add_argument('-te', '--test', default='K562', type=str,
-        help='test cell type')
-    parser.add_argument('-chr', '--chromosome', default='chr21', nargs='+', type=str,
-        help='test chromosome')
-    parser.add_argument('-para', '--parallel', default=1, type=int,
-        help='control GPU memory usage when running multiple models in parallel') 
+    
+    parser.add_argument('-m', '--model', 
+                        default='weights_1.h5', 
+                        type=str,
+                        help='model name')
+    
+    parser.add_argument('-tf', '--transcription_factor', 
+                        default='CTCF',
+                        type=str,
+                        help='transcript factor')
+    
+    parser.add_argument('-te', '--test', 
+                        default='K562', 
+                        type=str,
+                        help='test cell type')
+    
+    parser.add_argument('-chr', '--chromosome', 
+                        default='chr21', 
+                        nargs='+', 
+                        type=str,
+                        help='test chromosome')
+    
+    parser.add_argument('--input_bigwig', 
+                        dest="input_bigwig", 
+                        type=str, 
+                        help='Input bigwig')
+    
+    parser.add_argument('--output_dir', "-o", 
+                        dest="output_dir", 
+                        type=str, 
+                        help='Output dir')
+    
+    parser.add_argument('-para', '--parallel', 
+                        default=1, 
+                        type=int, 
+                        help='control GPU memory usage when running multiple models in parallel') 
+    
     args = parser.parse_args()
+    
     return args
 
 args=get_args()
 
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1/float(args.parallel) - 0.05
-set_session(tf.Session(config=config))
+#from tensorflow.keras.backend.tensorflow_backend import set_session
+#config = tf.ConfigProto()
+#config.gpu_options.per_process_gpu_memory_fraction = 1/float(args.parallel) - 0.05
+#set_session(tf.Session(config=config))
 
 #print(sys.argv)
 name_model=args.model
 the_tf=args.transcription_factor
 cell_test=args.test
 list_chr=args.chromosome
+input_fn=args.input_bigwig
 
 model = unet.get_unet(the_lr=1e-3,num_class=1,num_channel=num_channel,size=size)
 model.load_weights(name_model)
@@ -75,9 +104,9 @@ model.load_weights(name_model)
 list_dna=['A','C','G','T']
 dict_dna={}
 for the_id in list_dna:
-    dict_dna[the_id]=pyBigWig.open(path1 + the_id + '.bigwig')
-feature_avg=pyBigWig.open(path2 + 'avg.bigwig')
-feature_test=pyBigWig.open(path2 + cell_test + '.bigwig')
+    dict_dna[the_id]=pyBigWig.open("/data/miraldiNB/Tareian/scratch/20221012_leopard_gm12878/bin/Leopard/data/" + the_id + '.bigwig')
+feature_avg=pyBigWig.open("/data/miraldiNB/Tareian/scratch/20221012_leopard_gm12878/bin/Leopard/data/" + 'avg.bigwig')
+feature_test=pyBigWig.open(input_fn)
 ############
 
 if __name__ == '__main__':
@@ -156,9 +185,14 @@ if __name__ == '__main__':
         output_all=np.divide(output_all,count_all)
 
         if write_pred:
-            os.system('mkdir -p output')
-            np.save('./output/pred_' + the_tf + '_' + cell_test + '_' + the_chr + '_' + the_name, output_all)
-
+            if not os.path.exists(args.output_dir):
+                os.mkdir(args.output_dir)
+            
+            output_model_predict_name = os.path.join(args.output_dir, 
+                                                     'pred_' + the_tf + '_' + cell_test + '_' + the_chr + '_' + the_name)
+            
+            np.save(output_model_predict_name, output_all)
+            
 
 for the_id in list_dna:
     dict_dna[the_id].close()
